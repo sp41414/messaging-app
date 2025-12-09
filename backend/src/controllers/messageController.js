@@ -157,7 +157,6 @@ const editMessage = [passport.authenticate("jwt", { session: false }), editedMes
 }]
 
 const deleteMessage = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
-    const recipientId = req.body.recipientId
     const messageId = req.params.id
 
     try {
