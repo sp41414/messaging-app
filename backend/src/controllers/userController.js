@@ -157,7 +157,7 @@ const refuseFriend = [passport.authenticate("jwt", { session: false }), async (r
                 status: "PENDING"
             }
         })
-        if (friendship) {
+        if (!friendship) {
             return res.status(404).json({
                 error: {
                     message: "Pending request not found.",
