@@ -13,6 +13,13 @@ const messageValidation = [
         .toInt()
 ]
 
+const editedMessageValidation = [
+    body("text")
+        .trim()
+        .isLength({ max: 2000 })
+        .withMessage("Max length 2000 characters"),
+]
+
 const newMessage = [passport.authenticate("jwt", { session: false }), messageValidation, async (req, res, next) => {
     const err = validationResult(req)
 
@@ -89,14 +96,98 @@ const newMessage = [passport.authenticate("jwt", { session: false }), messageVal
     }
 }]
 
-const editMessage = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
-    const recipientId = req.body.recipientId
+const editMessage = [passport.authenticate("jwt", { session: false }), editedMessageValidation, async (req, res, next) => {
+    const err = validationResult(req)
+    if (!err.isEmpty()) {
+        return res.status(400).json({
+            error: {
+                message: err.array(),
+                timestamp: new Date().toISOString()
+            }
+        })
+    }
+
     const messageId = req.params.id
+    const { text } = matchedData(req)
+
+    try {
+        const message = await db.message.findFirst({
+            where: {
+                id: messageId,
+                senderId: req.user.id
+            }
+        })
+
+        if (!message) {
+            return res.status(404).json({
+                error: {
+                    message: "Message not found",
+                    timestamp: new Date().toISOString()
+                }
+            })
+        }
+
+        if (text.length <= 0) {
+            const deletedMessage = await db.message.delete({
+                where: {
+                    id: message.id
+                }
+            })
+            return res.json({
+                deletedMessage
+            })
+        }
+
+        const editedMessage = await db.message.update({
+            where: {
+                id: message.id
+            },
+            data: {
+                text: text,
+                edited: true
+            }
+        })
+
+        res.json({
+            editedMessage
+        })
+    } catch (err) {
+        next(err)
+    }
 }]
 
 const deleteMessage = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
     const recipientId = req.body.recipientId
     const messageId = req.params.id
+
+    try {
+        const message = await db.message.findFirst({
+            where: {
+                id: messageId,
+            }
+        })
+
+        if (!message) {
+            return res.status(404).json({
+                error: {
+                    message: "Message not found",
+                    timestamp: new Date().toISOString()
+                }
+            })
+        }
+
+        const deletedMessage = await db.message.delete({
+            where: {
+                id: message.id,
+                senderId: req.user.id
+            }
+        })
+        res.json({
+            deletedMessage
+        })
+    } catch (err) {
+        next(err)
+    }
 }]
 
 module.exports = {

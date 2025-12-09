@@ -61,5 +61,7 @@ model Message {
     recipientId Int
     recipient   User @relation("Recipient", fields: [recipientId], references: [id])
 
+    edited Boolean @default(false)
+
     @@index([senderId, recipientId])
 }
