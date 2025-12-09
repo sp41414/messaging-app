@@ -198,8 +198,46 @@ const deleteMessage = [passport.authenticate("jwt", { session: false }), async (
     }
 }]
 
+const getConversation = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+    try {
+        const conversationWithUserId = parseInt(req.params.id)
+        const userId = req.user.id
+
+        if (!conversationWithUserId) {
+            return res.status(400).json({
+                error: {
+                    message: "Missing user ID parameter",
+                    timestamp: new Date().toISOString()
+                }
+            })
+        }
+
+        const messages = await db.message.findMany({
+            where: {
+                OR: [
+                    { senderId: userId, recipientId: conversationWithUserId },
+                    { senderId: conversationWithUserId, recipientId: userId }
+                ]
+            },
+            orderBy: {
+                createdAt: 'asc'
+            },
+            take: 50,
+            skip: req.query.skip ? parseInt(req.query.skip) : 0
+        })
+
+        res.json({
+            messages
+        })
+    } catch (err) {
+        next(err)
+    }
+}]
+
+
 module.exports = {
     newMessage,
     editMessage,
-    deleteMessage
+    deleteMessage,
+    getConversation
 }

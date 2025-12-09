@@ -419,7 +419,7 @@ const getCurrentProfile = [passport.authenticate("jwt", { session: false }), asy
         })
 
         res.json({
-            userProfile
+            user: userProfile
         })
     } catch (err) {
         next(err)
