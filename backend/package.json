@@ -4,7 +4,9 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "dev": "nodemon ./app.js"
+        "dev": "nodemon ./app.js",
+        "prisma:generate": "npx prisma generate",
+        "prisma:migrate": "npx prisma migrate dev"
     },
     "keywords": [],
     "author": "",
