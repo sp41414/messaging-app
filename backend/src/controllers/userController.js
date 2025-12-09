@@ -271,11 +271,170 @@ const removeFriend = [passport.authenticate("jwt", { session: false }), async (r
     }
 }]
 
+
+const getProfile = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+    try {
+        const userId = parseInt(req.params.id)
+        const userProfile = await db.user.findUnique({
+            where: {
+                id: userId
+            },
+            select: {
+                id: true,
+                username: true,
+                aboutMe: true,
+                createdAt: true
+            }
+        })
+
+        if (!userProfile) {
+            return res.status(404).json({
+                error: {
+                    message: "User not found",
+                    timestamp: new Date().toISOString()
+                }
+            })
+        }
+
+        res.json({
+            user: userProfile
+        })
+    } catch (err) {
+        next(err)
+    }
+}]
+
+const getFriends = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+    try {
+        const userId = req.user.id
+        const friends = await db.friendship.findMany({
+            where: {
+                OR: [
+                    { senderId: userId },
+                    { recipientId: userId }
+                ],
+                status: "ACCEPTED"
+            },
+            include: {
+                sender: {
+                    select: {
+                        id: true,
+                        username: true,
+                        aboutMe: true
+                    }
+                },
+                recipient: {
+                    select: {
+                        id: true,
+                        username: true,
+                        aboutMe: true
+                    }
+                }
+            }
+        })
+
+        if (!friends || friends.length === 0) {
+            return res.status(200).json({
+                error: {
+                    message: "You have no friends",
+                    timestamp: new Date().toISOString()
+                }
+            })
+        }
+
+        const friendships = friends.map(fs => {
+            return fs.senderId === userId ? fs.recipient : fs.sender
+        })
+
+        res.json({
+            friends: friendships
+        })
+    } catch (err) {
+        next(err)
+    }
+}]
+
+const getFriendRequests = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+    try {
+        const userId = req.user.id
+        const friendRequests = await db.friendship.findMany({
+            where: {
+                OR: [
+                    { senderId: userId },
+                    { recipientId: userId }
+                ],
+                status: "PENDING"
+            },
+            include: {
+                sender: {
+                    select: {
+                        id: true,
+                        username: true,
+                        aboutMe: true
+                    }
+                },
+                recipient: {
+                    select: {
+                        id: true,
+                        username: true,
+                        aboutMe: true
+                    }
+                }
+            }
+        })
+
+        if (!friendRequests || friendRequests.length === 0) {
+            return res.status(200).json({
+                message: "You have no friend requests",
+                timestamp: new Date().toISOString()
+            })
+        }
+
+        const requests = friendRequests.map(req => ({
+            id: req.id,
+            status: req.status,
+            createdAt: req.createdAt,
+            type: req.senderId === userId ? 'sent' : 'received',
+            user: req.senderId === userId ? req.recipient : req.sender
+        }))
+
+        res.json({
+            friendRequests: requests
+        })
+    } catch (err) {
+        next(err)
+    }
+}]
+
+const getCurrentProfile = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+    try {
+        const userProfile = await db.user.findUnique({
+            where: { id: req.user.id },
+            select: {
+                id: true,
+                username: true,
+                aboutMe: true,
+                createdAt: true
+            }
+        })
+
+        res.json({
+            userProfile
+        })
+    } catch (err) {
+        next(err)
+    }
+}]
+
 module.exports = {
     updateInfo,
     addFriend,
     acceptFriend,
     refuseFriend,
     blockFriend,
-    removeFriend
+    removeFriend,
+    getProfile,
+    getFriends,
+    getFriendRequests,
+    getCurrentProfile
 }
