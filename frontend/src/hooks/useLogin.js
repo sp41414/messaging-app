@@ -1,17 +1,15 @@
 import { useState, useContext } from "react"
-import { useNavigate } from "react-router"
 import { AuthContext } from "../contexts/AuthContext"
 
 export default function useLogin() {
     const { dispatch } = useContext(AuthContext)
     const [error, setError] = useState(null)
     const [isLoading, setIsLoading] = useState(false)
-    const navigate = useNavigate()
 
     const login = async (username, password) => {
         setIsLoading(true)
         setError(null)
-        const res = await fetch(`${import.meta.VITE_BACKEND_URL}/api/auth/login`, {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -31,7 +29,6 @@ export default function useLogin() {
             localStorage.setItem("token", data.token)
             dispatch({ type: "LOGIN", user: data })
             setIsLoading(false)
-            navigate("/")
         }
     }
 

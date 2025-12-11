@@ -9,7 +9,7 @@ export default function useSignup() {
     const signup = async (username, password) => {
         setIsLoading(true)
         setError(null)
-        const res = await fetch(`${import.meta.VITE_BACKEND_URL}/api/auth/signup`, {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/signup`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
