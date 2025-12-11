@@ -107,10 +107,10 @@ export default function SideBar({ user, ready, onSectionChange, currentUser, set
                     <div className="py-2">
                         <div className="px-4 mb-2">
                             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
-                                All Users — {users.length}
+                                All Users — {users.filter(u => u.id !== currentUser?.id).length}
                             </p>
                         </div>
-                        {users.map((u) => (
+                        {users.filter(u => u.id !== currentUser?.id).map((u) => (
                             <button
                                 key={u.id}
                                 onClick={() => handleSectionClick({ name: "users", id: `${u.id}` })}

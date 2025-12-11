@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Send, UserPlus, Ban, Unlock } from "lucide-react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { Send, UserPlus, Ban, Unlock, MoreVertical, Edit2, Trash2 } from "lucide-react";
 
 export default function Conversation({ user, partnerId }) {
     const [messages, setMessages] = useState([]);
@@ -8,20 +8,16 @@ export default function Conversation({ user, partnerId }) {
     const [isBlocked, setIsBlocked] = useState(false);
     const [newMessage, setNewMessage] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const [skip, setSkip] = useState(0);
-
+    const [openDropdown, setOpenDropdown] = useState(null);
+    const [editingMessageId, setEditingMessageId] = useState(null);
+    const [editText, setEditText] = useState("");
+    const dropdownRef = useRef(null);
     const messagesEndRef = useRef(null);
-    const messagesContainerRef = useRef(null);
-    const prevScrollHeightRef = useRef(0);
 
     useEffect(() => {
         if (!user || !partnerId) return;
 
         setMessages([]);
-        setSkip(0);
-        setHasMore(true);
         async function fetchData() {
             setIsLoading(true);
             try {
@@ -49,12 +45,6 @@ export default function Conversation({ user, partnerId }) {
                     const data = await msgRes.json();
                     const msgs = data.messages || []
                     setMessages(msgs)
-                    setHasMore(msgs.length >= 50);
-                    setSkip(msgs.length);
-
-                    setTimeout(() => {
-                        messagesEndRef.current?.scrollIntoView();
-                    }, 100);
                 }
 
                 if (friendRes.ok) {
@@ -78,58 +68,12 @@ export default function Conversation({ user, partnerId }) {
         fetchData();
     }, [user, partnerId]);
 
-    const loadMoreMessages = async () => {
-        if (isLoadingMore || !hasMore) return;
 
-        setIsLoadingMore(true);
-        try {
-            const res = await fetch(
-                `${import.meta.env.VITE_BACKEND_URL}/api/messages/${partnerId}?skip=${skip}`,
-                { headers: { "Authorization": `Bearer ${user}` } }
-            );
-
-            if (res.ok) {
-                const data = await res.json();
-                const newMsgs = data.messages || [];
-
-                if (newMsgs.length === 0) {
-                    setHasMore(false);
-                } else {
-                    const container = messagesContainerRef.current;
-                    if (container) {
-                        prevScrollHeightRef.current = container.scrollHeight;
-                    }
-
-                    setMessages(prev => [...newMsgs, ...prev]);
-                    setSkip(prev => prev + newMsgs.length);
-                    setHasMore(newMsgs.length === 50);
-                }
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoadingMore(false);
+    useLayoutEffect(() => {
+        if (!isLoading && messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "auto" });
         }
-    };
-
-    useEffect(() => {
-        const container = messagesContainerRef.current;
-        if (container && prevScrollHeightRef.current > 0) {
-            const newScrollHeight = container.scrollHeight;
-            const scrollDiff = newScrollHeight - prevScrollHeightRef.current;
-            container.scrollTop = scrollDiff;
-            prevScrollHeightRef.current = 0;
-        }
-    }, [messages]);
-
-    const handleScroll = () => {
-        const container = messagesContainerRef.current;
-        if (!container) return;
-
-        if (container.scrollTop < 100 && hasMore && !isLoadingMore) {
-            loadMoreMessages();
-        }
-    };
+    }, [messages, isLoading]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -156,6 +100,7 @@ export default function Conversation({ user, partnerId }) {
                 if (msgRes.ok) setMessages(msgData.messages || []);
                 setNewMessage("");
             }
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50)
         } catch (err) {
             console.error(err);
         }
@@ -202,6 +147,67 @@ export default function Conversation({ user, partnerId }) {
         } catch (err) {
             console.error(err);
         }
+    };
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setOpenDropdown(null);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleEditMessage = async (messageId) => {
+        if (!editText.trim()) return;
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/messages/${messageId}`, {
+                method: "PUT",
+                headers: {
+                    "Authorization": `Bearer ${user}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: editText })
+            });
+
+            if (res.ok) {
+                setMessages(prev => prev.map(m => m.id === messageId ? { ...m, text: editText, edited: true } : m));
+                setEditingMessageId(null);
+                setEditText("");
+                setOpenDropdown(null);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleDeleteMessage = async (messageId) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/messages/${messageId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${user}` }
+            });
+
+            if (res.ok) {
+                setOpenDropdown(null);
+                setMessages(prev => prev.filter(m => m.id !== messageId));
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const startEdit = (msg) => {
+        setEditingMessageId(msg.id);
+        setEditText(msg.text);
+        setOpenDropdown(null);
+    };
+
+    const cancelEdit = () => {
+        setEditingMessageId(null);
+        setEditText("");
     };
 
     const formatDate = (dateString) => {
@@ -258,7 +264,7 @@ export default function Conversation({ user, partnerId }) {
                 </div>
             </header>
 
-            <div ref={messagesContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-thick-transparent">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full text-zinc-500">Loading conversation...</div>
                 ) : messages.length === 0 ? (
@@ -294,13 +300,76 @@ export default function Conversation({ user, partnerId }) {
                                         <span className="text-xs text-zinc-500">
                                             {formatTime(msg.createdAt)}
                                         </span>
+                                        {msg.edited && (
+                                            <span className="text-xs text-zinc-500 italic">(edited)</span>
+                                        )}
                                     </div>
-                                    <div className={`px-4 py-2 rounded-lg max-w-[80%] sm:max-w-[70%] wrap-break-word ${isMe
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-zinc-700 text-zinc-100"
-                                        }`}>
-                                        <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                                    </div>
+
+                                    {editingMessageId === msg.id ? (
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <textarea
+                                                value={editText}
+                                                onChange={(e) => setEditText(e.target.value)}
+                                                className="bg-zinc-900 text-white px-4 py-2 rounded-md border border-zinc-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                                                rows={3}
+                                                autoFocus
+                                            />
+                                            <div className="flex gap-2 justify-end">
+                                                <button
+                                                    onClick={cancelEdit}
+                                                    className="px-4 py-1 text-sm text-zinc-400 hover:text-white transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={() => handleEditMessage(msg.id)}
+                                                    disabled={!editText.trim()}
+                                                    className="px-4 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white rounded-md transition-colors"
+                                                >
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={`flex items-start gap-2 group relative w-full ${isMe ? "justify-end" : "justify-start"}`}>
+                                            <div className={`px-4 py-2 rounded-lg max-w-[80%] min-w-0 w-fit ${isMe
+                                                ? "bg-blue-600 text-white"
+                                                : "bg-zinc-700 text-zinc-100"
+                                                }`}>
+                                                <p className="leading-relaxed break-words whitespace-pre-wrap">{msg.text}</p>
+                                            </div>
+
+                                            {isMe && (
+                                                <div className="relative" ref={openDropdown === msg.id ? dropdownRef : null}>
+                                                    <button
+                                                        onClick={() => setOpenDropdown(openDropdown === msg.id ? null : msg.id)}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-700 rounded transition-opacity"
+                                                    >
+                                                        <MoreVertical className="w-4 h-auto text-zinc-400" />
+                                                    </button>
+
+                                                    {openDropdown === msg.id && (
+                                                        <div className="absolute right-0 mt-1 bg-zinc-900 border border-zinc-700 rounded-md shadow-lg py-1 min-w-3xs z-1">
+                                                            <button
+                                                                onClick={() => startEdit(msg)}
+                                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors duration-200"
+                                                            >
+                                                                <Edit2 className="w-4 h-auto" />
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteMessage(msg.id)}
+                                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-800 transition-colors duration-200"
+                                                            >
+                                                                <Trash2 className="w-4 h-auto" />
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -310,19 +379,26 @@ export default function Conversation({ user, partnerId }) {
             </div>
 
             <form onSubmit={handleSendMessage} className="p-4 bg-transparent shrink-0">
-                <div className="flex gap-4 max-w-4xl mx-auto">
-                    <input
-                        type="text"
+                <div className="flex gap-4 max-w-4xl mx-auto items-end">
+                    <textarea
+                        rows={1}
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={(e) => { setNewMessage(e.target.value); e.target.style.height = "auto"; e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`; }}
+                        onKeyDown={e => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault()
+                                handleSendMessage(e)
+                                e.target.style.height = "auto";
+                            }
+                        }}
                         placeholder={isBlocked ? "You have blocked this user" : `Message @${partner?.username || "user"}`}
                         disabled={isBlocked}
-                        className="flex-1 bg-zinc-800 text-white p-4 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 border border-zinc-700 placeholder-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-zinc-800 text-white p-4 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 border border-zinc-700 placeholder-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed max-h-64"
                     />
                     <button
                         type="submit"
                         disabled={!newMessage.trim() || isBlocked}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white p-4 rounded-md transition-colors duration-200 cursor-pointer"
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white p-4 rounded-md transition-colors duration-200 cursor-pointer h-12 w-12 flex items-center justify-center shrink-0"
                     >
                         <Send className="w-5 h-auto" />
                     </button>

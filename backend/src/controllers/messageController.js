@@ -221,8 +221,6 @@ const getConversation = [passport.authenticate("jwt", { session: false }), async
             orderBy: {
                 createdAt: 'asc'
             },
-            take: 50,
-            skip: req.query.skip ? parseInt(req.query.skip) : 0
         })
 
         res.json({
