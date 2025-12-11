@@ -4,6 +4,7 @@ import { AuthContext } from "../../contexts/AuthContext"
 import SideBar from "./components/SideBar"
 import Settings from "./components/Settings"
 import Friends from "./components/Friends"
+import Conversation from "./components/Conversation"
 
 export default function HomePage() {
     const { user, ready } = useContext(AuthContext)
@@ -22,17 +23,16 @@ export default function HomePage() {
     }
 
     return (
-        <main className="bg-zinc-800 text-white min-h-screen flex">
+        <main className="bg-zinc-800 text-white h-screen flex overflow-hidden">
             <SideBar user={user} ready={ready} onSectionChange={handleSectionChange} currentUser={currentUser} setCurrentUser={setCurrentUser} />
 
-            <section className="flex-1 flex flex-col">
+            <section className="flex-1 flex flex-col overflow-hidden">
                 {currentSection.name === 'friends' && (
                     <Friends user={user} />
                 )}
 
-                {currentSection.name === "user" && (
-                    <div className="p-6">
-                    </div>
+                {currentSection.name === "users" && (
+                    <Conversation user={user} partnerId={currentSection.id} />
                 )}
 
                 {currentSection.name === "settings" && (
