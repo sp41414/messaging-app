@@ -27,7 +27,7 @@ export default function useLogin() {
 
         if (res.ok) {
             localStorage.setItem("token", data.token)
-            dispatch({ type: "LOGIN", user: data })
+            dispatch({ type: "LOGIN", user: data.token })
             setIsLoading(false)
         }
     }
