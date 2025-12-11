@@ -3,9 +3,10 @@ const userRouter = Router()
 const userController = require('../controllers/userController')
 
 userRouter.get("/me", userController.getCurrentProfile)
-userRouter.get("/:id", userController.getProfile)
 userRouter.get("/friends", userController.getFriends)
 userRouter.get("/friends/requests", userController.getFriendRequests)
+userRouter.get("/:id", userController.getProfile)
+userRouter.get("/", userController.getUsers)
 
 userRouter.put("/me", userController.updateInfo)
 userRouter.post("/friends/requests/add/:id", userController.addFriend)

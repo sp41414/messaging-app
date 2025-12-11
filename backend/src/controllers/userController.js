@@ -385,8 +385,10 @@ const getFriendRequests = [passport.authenticate("jwt", { session: false }), asy
 
         if (!friendRequests || friendRequests.length === 0) {
             return res.status(200).json({
-                message: "You have no friend requests",
-                timestamp: new Date().toISOString()
+                error: {
+                    message: "You have no friend requests",
+                    timestamp: new Date().toISOString()
+                }
             })
         }
 
@@ -426,6 +428,24 @@ const getCurrentProfile = [passport.authenticate("jwt", { session: false }), asy
     }
 }]
 
+const getUsers = [passport.authenticate("jwt", { session: false }), async (req, res, next) => {
+    try {
+        const users = await db.user.findMany({
+            select: {
+                id: true,
+                username: true,
+                aboutMe: true,
+                createdAt: true
+            }
+        })
+        res.json({
+            users
+        })
+    } catch (err) {
+        next(err)
+    }
+}]
+
 module.exports = {
     updateInfo,
     addFriend,
@@ -436,5 +456,6 @@ module.exports = {
     getProfile,
     getFriends,
     getFriendRequests,
-    getCurrentProfile
+    getCurrentProfile,
+    getUsers
 }

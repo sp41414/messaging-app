@@ -1,7 +1,7 @@
 import { useEffect, useState, useContext } from "react"
 import { useNavigate, Link } from "react-router"
 import { AuthContext } from "../../contexts/AuthContext"
-import Form from "./Form"
+import Form from "./components/Form"
 import useLogin from "../../hooks/useLogin"
 
 
