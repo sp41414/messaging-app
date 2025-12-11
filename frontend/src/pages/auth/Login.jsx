@@ -31,7 +31,7 @@ export default function Login() {
                     <p className="text-red-300 mb-2">{typeof error === "string" ? error : error.map(err => err.msg).join(", ")}</p>
                 )}
                 <Form onSubmit={onSubmit} type={"Login"} setUsername={setUsername} setPassword={setPassword} username={username} password={password} isLoading={isLoading} />
-                <p className="text-neutral-400">Don't have an account? <Link to="/login"><span className="text-blue-400 hover:underline">Sign up</span></Link></p>
+                <p className="text-neutral-400">Don't have an account? <Link to="/signup"><span className="text-blue-400 hover:underline">Sign up</span></Link></p>
             </section>
         </main>
     )
